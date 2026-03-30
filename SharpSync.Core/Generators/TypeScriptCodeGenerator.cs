@@ -130,7 +130,7 @@ namespace SharpSync.Core.Generators
                 return "string";
             if (type == typeof(bool))
                 return "boolean";
-            if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
+            if (type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(DateOnly) || type == typeof(TimeOnly))
                 return "string";
             if (type.IsArray)
                 return MapCSharpToTypeScript(type.GetElementType()!) + "[]";

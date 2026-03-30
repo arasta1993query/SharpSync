@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest } from './apiClient'; // Ensure you have an apiClient.ts exporting an apiRequest function.
 
 export interface DemoForecast {
-    date: DateOnly;
+    date: string;
     temperatureC: number;
     temperatureF: number;
     summary: string;

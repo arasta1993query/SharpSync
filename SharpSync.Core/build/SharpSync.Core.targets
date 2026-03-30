@@ -1,6 +1,6 @@
 <Project>
   <Target Name="SharpSyncCodeGeneration" AfterTargets="Build">
     <Message Importance="High" Text="[SharpSync] Triggering Code Generation for $(ProjectName)..." />
-    <Exec Command="dotnet sharpsync &quot;$(TargetPath)&quot; &quot;$(ProjectDir)SharpSyncGenerated/api.ts&quot;" ContinueOnError="true" />
+    <Exec Command="dotnet sharpsync &quot;$(TargetPath)&quot; --output &quot;$(ProjectDir)SharpSyncGenerated&quot; --client axios" ContinueOnError="true" />
   </Target>
 </Project>
