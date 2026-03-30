@@ -1,0 +1,6 @@
+@SharpSync.Example.WebApi_HostAddress = http://localhost:5287
+
+GET {{SharpSync.Example.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

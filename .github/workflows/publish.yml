@@ -1,0 +1,35 @@
+name: Publish to NuGet
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  build_and_publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+          
+      - name: Restore dependencies
+        run: dotnet restore
+        
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+        
+      - name: Pack Core
+        run: dotnet pack SharpSync.Core/SharpSync.Core.csproj --configuration Release --no-build --output nupkgs
+        
+      - name: Pack Tool
+        run: dotnet pack SharpSync.Tool/SharpSync.Tool.csproj --configuration Release --no-build --output nupkgs
+        
+      - name: Publish to NuGet (Main Branch or Tags)
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: dotnet nuget push "nupkgs/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
