@@ -10,7 +10,7 @@ export interface DemoForecast {
 }
 
 export const getRequest = async () => {
-    return await apiRequest<DemoForecast[]>('api/v1/demoforecast/all', 'GET');
+    return await apiRequest<DemoForecast[]>('api/v1/demoforecast/all', 'GET', null, null);
 };
 
 export const useGetQuery = () => {
@@ -21,7 +21,7 @@ export const useGetQuery = () => {
 };
 
 export const getByIdRequest = async (id: number) => {
-    return await apiRequest<DemoForecast>(`api/v1/demoforecast/${id}`, 'GET');
+    return await apiRequest<DemoForecast>(`api/v1/demoforecast/${id}`, 'GET', null, null);
 };
 
 export const useGetByIdQuery = (id: number) => {
@@ -32,13 +32,24 @@ export const useGetByIdQuery = (id: number) => {
 };
 
 export const getStatsRequest = async () => {
-    return await apiRequest<string>('global-stats', 'GET');
+    return await apiRequest<string>('global-stats', 'GET', null, null);
 };
 
 export const useGetStatsQuery = () => {
     return useQuery({
         queryKey: ['DemoForecastController', 'GetStats'],
         queryFn: () => getStatsRequest(),
+    });
+};
+
+export const searchRequest = async (q: string, minTemp: number) => {
+    return await apiRequest<DemoForecast[]>('api/v1/demoforecast/search', 'GET', null, { q, minTemp });
+};
+
+export const useSearchQuery = (q: string, minTemp: number) => {
+    return useQuery({
+        queryKey: ['DemoForecastController', 'Search', q, minTemp],
+        queryFn: () => searchRequest(q, minTemp),
     });
 };
 

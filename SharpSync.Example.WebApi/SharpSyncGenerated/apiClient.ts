@@ -12,12 +12,14 @@ export const apiRequest = async <T>(
     url: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     body?: any,
+    params?: any,
     options?: AxiosRequestConfig
 ): Promise<T> => {
     const response = await axiosInstance.request<T>({
         url,
         method,
         data: body,
+        params,
         ...options,
     });
     return response.data;

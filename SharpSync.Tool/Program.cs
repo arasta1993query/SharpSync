@@ -100,12 +100,14 @@ export const apiRequest = async <T>(
     url: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     body?: any,
+    params?: any,
     options?: AxiosRequestConfig
 ): Promise<T> => {
     const response = await axiosInstance.request<T>({
         url,
         method,
         data: body,
+        params,
         ...options,
     });
     return response.data;
@@ -122,9 +124,25 @@ export const apiRequest = async <T>(
     url: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     body?: any,
+    params?: any,
     options?: RequestInit
 ): Promise<T> => {
-    const response = await fetch(`${BASE_URL}/${url}`, {
+    let finalUrl = `${BASE_URL.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
+    
+    if (params) {
+        const query = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null) {
+                query.append(key, params[key].toString());
+            }
+        });
+        const queryString = query.toString();
+        if (queryString) {
+            finalUrl += (finalUrl.includes('?') ? '&' : '?') + queryString;
+        }
+    }
+
+    const response = await fetch(finalUrl, {
         method,
         headers: {
             'Content-Type': 'application/json',
@@ -138,7 +156,6 @@ export const apiRequest = async <T>(
         throw new Error(`API Request failed: ${response.statusText}`);
     }
 
-    // Try parsing JSON if content exists
     try {
         const text = await response.text();
         return text ? JSON.parse(text) : ({} as T);

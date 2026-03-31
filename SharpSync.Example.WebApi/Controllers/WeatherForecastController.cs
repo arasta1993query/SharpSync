@@ -27,4 +27,10 @@ public class DemoForecastController : ControllerBase
     {
         return "Stats: 100% Sync";
     }
+
+    [HttpGet("search")]
+    public IEnumerable<DemoForecast> Search([FromQuery] string? q, int? minTemp)
+    {
+        return new List<DemoForecast>();
+    }
 }

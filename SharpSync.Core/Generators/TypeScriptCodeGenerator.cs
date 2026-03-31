@@ -120,33 +120,67 @@ namespace SharpSync.Core.Generators
                 var methodParameters = method.GetParameters();
                 var tsFuncParams = new List<string>();
                 var tsCallParams = new List<string>();
+                var tsQueryParams = new List<string>();
+                
                 var finalUrl = fullRoute;
 
+                // 1. Identify Path Parameters
                 foreach (var paramName in routeParams)
                 {
                     var csharpParam = methodParameters.FirstOrDefault(p => string.Equals(p.Name, paramName, StringComparison.OrdinalIgnoreCase));
                     string tsType = csharpParam != null ? MapCSharpToTypeScript(csharpParam.ParameterType) : "any";
                     
-                    // Add to function parameters (id: number)
                     tsFuncParams.Add($"{CamelCase(paramName)}: {tsType}");
                     tsCallParams.Add(CamelCase(paramName));
 
-                    // Transform placeholder for template literal {id} -> ${id}
                     finalUrl = finalUrl.Replace("{" + paramName + "}", "${" + CamelCase(paramName) + "}");
+                }
+
+                // 2. Identify Query and Body Parameters
+                string? bodyParamName = null;
+                foreach (var param in methodParameters)
+                {
+                    if (routeParams.Any(rp => string.Equals(rp, param.Name, StringComparison.OrdinalIgnoreCase)))
+                        continue; // Already handled as path param
+
+                    bool isFromQuery = param.GetCustomAttributes(true).Any(a => a.GetType().Name == "FromQueryAttribute");
+                    bool isFromBody = param.GetCustomAttributes(true).Any(a => a.GetType().Name == "FromBodyAttribute");
+                    bool isSimple = IsSimpleType(param.ParameterType);
+
+                    if (isFromQuery || (httpMethod == "GET" && isSimple))
+                    {
+                        string tsType = MapCSharpToTypeScript(param.ParameterType);
+                        tsFuncParams.Add($"{CamelCase(param.Name)}: {tsType}");
+                        tsQueryParams.Add($"{CamelCase(param.Name)}");
+                    }
+                    else if (isFromBody || (!isSimple && httpMethod != "GET"))
+                    {
+                        bodyParamName = CamelCase(param.Name);
+                        string tsType = MapCSharpToTypeScript(param.ParameterType);
+                        tsFuncParams.Add($"{bodyParamName}: {tsType}");
+                    }
                 }
 
                 string returnType = MapCSharpToTypeScript(GetUnwrappedReturnType(method.ReturnType));
                 string funcName = CamelCase(method.Name);
                 
                 string funcArgs = string.Join(", ", tsFuncParams);
-                string callArgs = string.Join(", ", tsCallParams);
-                string queryKeyParams = tsCallParams.Any() ? ", " + string.Join(", ", tsCallParams) : "";
+                string callArgs = string.Join(", ", tsFuncParams.Select(p => p.Split(':')[0].Trim()));
                 
-                // Use backticks if there are parameters
+                // Construct the params object for the TS call
+                string tsParamsObject = tsQueryParams.Any() 
+                    ? "{ " + string.Join(", ", tsQueryParams) + " }" 
+                    : "null";
+
+                string bodyArgument = bodyParamName ?? "null";
                 string urlQuote = routeParams.Any() ? "`" : "'";
 
+                // Update QueryKey to include everything (Path + Query)
+                var allKeyParams = tsFuncParams.Select(p => p.Split(':')[0].Trim()).ToList();
+                string queryKeyParams = allKeyParams.Any() ? ", " + string.Join(", ", allKeyParams) : "";
+
                 sb.AppendLine($"export const {funcName}Request = async ({funcArgs}) => {{");
-                sb.AppendLine($"    return await apiRequest<{returnType}>({urlQuote}{finalUrl}{urlQuote}, '{httpMethod}');");
+                sb.AppendLine($"    return await apiRequest<{returnType}>({urlQuote}{finalUrl}{urlQuote}, '{httpMethod}', {bodyArgument}, {tsParamsObject});");
                 sb.AppendLine($"}};");
                 sb.AppendLine();
 
@@ -169,6 +203,20 @@ namespace SharpSync.Core.Generators
                 }
                 sb.AppendLine();
             }
+        }
+
+        private bool IsSimpleType(Type type)
+        {
+            Type? underlying = Nullable.GetUnderlyingType(type);
+            if (underlying != null) type = underlying;
+
+            return type.IsPrimitive || 
+                   type == typeof(string) || 
+                   type == typeof(decimal) || 
+                   type == typeof(DateTime) || 
+                   type == typeof(DateTimeOffset) || 
+                   type == typeof(TimeSpan) || 
+                   type == typeof(Guid);
         }
 
         private Type GetUnwrappedReturnType(Type returnType)
