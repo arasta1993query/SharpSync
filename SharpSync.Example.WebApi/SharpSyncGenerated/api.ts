@@ -21,6 +21,11 @@ export interface CreateForecastDto {
     summary: string;
 }
 
+export interface UploadReportDto {
+    reportName: string;
+    reportFile: File;
+}
+
 export const getRequest = async () => {
     return await apiRequest<DemoForecast[]>('api/v1/demoforecast/all', 'GET', null, null);
 };
@@ -93,6 +98,28 @@ export const updateRequest = async (id: number, dto: CreateForecastDto) => {
 export const useUpdateMutation = () => {
     return useMutation({
         mutationFn: ({ id, dto }: { id: number; dto: CreateForecastDto }) => updateRequest(id, dto),
+    });
+};
+
+export const uploadReportRequest = async (dto: UploadReportDto) => {
+    const formData = new FormData();
+    if (dto) {
+        Object.entries(dto).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                if (Array.isArray(value)) {
+                    value.forEach(v => formData.append(key, v));
+                } else {
+                    formData.append(key, value as any);
+                }
+            }
+        });
+    }
+    return await apiRequest<string>('api/v1/demoforecast/upload-report', 'POST', formData, null);
+};
+
+export const useUploadReportMutation = () => {
+    return useMutation({
+        mutationFn: (dto: UploadReportDto) => uploadReportRequest(dto),
     });
 };
 

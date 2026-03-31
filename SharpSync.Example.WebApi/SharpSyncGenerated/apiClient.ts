@@ -15,6 +15,16 @@ export const apiRequest = async <T>(
     params?: any,
     options?: AxiosRequestConfig
 ): Promise<T> => {
+    if (body && !(body instanceof FormData)) {
+        options = {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(options?.headers || {}),
+            },
+        };
+    }
+
     const response = await axiosInstance.request<T>({
         url,
         method,

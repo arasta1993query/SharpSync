@@ -211,8 +211,11 @@ namespace SharpSync.Core.Generators
                     finalUrl = finalUrl.Replace("{" + paramName + "}", "${" + CamelCase(paramName) + "}");
                 }
 
-                // 2. Identify Query and Body Parameters
+                // 2. Identify Query, Body, and Form Parameters
                 string? bodyParamName = null;
+                bool isFormRequest = false;
+                string? formParamName = null;
+
                 foreach (var param in methodParameters)
                 {
                     if (routeParams.Any(rp => string.Equals(rp, param.Name, StringComparison.OrdinalIgnoreCase)))
@@ -220,6 +223,7 @@ namespace SharpSync.Core.Generators
 
                     bool isFromQuery = param.GetCustomAttributes(true).Any(a => a.GetType().Name == "FromQueryAttribute");
                     bool isFromBody = param.GetCustomAttributes(true).Any(a => a.GetType().Name == "FromBodyAttribute");
+                    bool isFromForm = param.GetCustomAttributes(true).Any(a => a.GetType().Name == "FromFormAttribute");
                     bool isSimple = IsSimpleType(param.ParameterType);
 
                     if (isFromQuery || (httpMethod == "GET" && isSimple))
@@ -231,6 +235,13 @@ namespace SharpSync.Core.Generators
                             tsQueryParams.Add(CamelCase(param.Name));
                         else
                             tsQuerySpreads.Add(CamelCase(param.Name));
+                    }
+                    else if (isFromForm)
+                    {
+                        isFormRequest = true;
+                        formParamName = CamelCase(param.Name);
+                        string tsType = MapCSharpToTypeScript(param.ParameterType);
+                        tsFuncParams.Add($"{formParamName}: {tsType}");
                     }
                     else if (isFromBody || (!isSimple && httpMethod != "GET"))
                     {
@@ -262,13 +273,39 @@ namespace SharpSync.Core.Generators
                     tsParamsObject = "null";
                 }
 
-                string bodyArgument = bodyParamName ?? "null";
+                string bodyArgument;
+                if (isFormRequest && formParamName != null)
+                {
+                    bodyArgument = "formData";
+                }
+                else
+                {
+                    bodyArgument = bodyParamName ?? "null";
+                }
+
                 string urlQuote = routeParams.Any() ? "`" : "'";
 
                 var allKeyParams = tsFuncParams.Select(p => p.Split(':')[0].Trim()).ToList();
                 string queryKeyParams = allKeyParams.Any() ? ", " + string.Join(", ", allKeyParams) : "";
 
                 sb.AppendLine($"export const {funcName}Request = async ({funcArgs}) => {{");
+                
+                if (isFormRequest && formParamName != null)
+                {
+                    sb.AppendLine("    const formData = new FormData();");
+                    sb.AppendLine($"    if ({formParamName}) {{");
+                    sb.AppendLine($"        Object.entries({formParamName}).forEach(([key, value]) => {{");
+                    sb.AppendLine("            if (value !== undefined && value !== null) {");
+                    sb.AppendLine("                if (Array.isArray(value)) {");
+                    sb.AppendLine("                    value.forEach(v => formData.append(key, v));");
+                    sb.AppendLine("                } else {");
+                    sb.AppendLine("                    formData.append(key, value as any);");
+                    sb.AppendLine("                }");
+                    sb.AppendLine("            }");
+                    sb.AppendLine("        });");
+                    sb.AppendLine("    }");
+                }
+
                 sb.AppendLine($"    return await apiRequest<{returnType}>({urlQuote}{finalUrl}{urlQuote}, '{httpMethod}', {bodyArgument}, {tsParamsObject});");
                 sb.AppendLine($"}};");
                 sb.AppendLine();
@@ -358,6 +395,10 @@ namespace SharpSync.Core.Generators
                 return "string";
             if (type == typeof(bool))
                 return "boolean";
+            if (type.Name == "IFormFile")
+                return "File";
+            if (type.Name == "IFormFileCollection" || (type.IsGenericType && type.GetGenericArguments().Any(a => a.Name == "IFormFile")))
+                return "File[]";
             if (type.IsArray)
                 return MapCSharpToTypeScript(type.GetElementType()!) + "[]";
             

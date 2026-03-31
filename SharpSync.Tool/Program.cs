@@ -103,6 +103,16 @@ export const apiRequest = async <T>(
     params?: any,
     options?: AxiosRequestConfig
 ): Promise<T> => {
+    if (body && !(body instanceof FormData)) {
+        options = {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(options?.headers || {}),
+            },
+        };
+    }
+
     const response = await axiosInstance.request<T>({
         url,
         method,
@@ -142,13 +152,18 @@ export const apiRequest = async <T>(
         }
     }
 
+    const requestHeaders: any = {
+        ...(options?.headers || {}),
+    };
+
+    if (body && !(body instanceof FormData)) {
+        requestHeaders['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(finalUrl, {
         method,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options?.headers || {}),
-        },
-        body: body ? JSON.stringify(body) : undefined,
+        headers: requestHeaders,
+        body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
         ...options,
     });
 

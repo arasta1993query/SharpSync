@@ -51,4 +51,10 @@ public class DemoForecastController : ControllerBase
     {
         return new DemoForecast { Summary = dto.Summary, TemperatureC = dto.TemperatureC };
     }
+
+    [HttpPost("upload-report")]
+    public string UploadReport([FromForm] UploadReportDto dto)
+    {
+        return $"Received report: {dto.ReportName}, file: {dto.ReportFile?.FileName}";
+    }
 }
