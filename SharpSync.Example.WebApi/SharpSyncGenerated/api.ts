@@ -9,6 +9,12 @@ export interface DemoForecast {
     summary: string;
 }
 
+export interface SearchFilter {
+    term: string;
+    minTemperature: number;
+    includeHistorical: boolean;
+}
+
 export const getRequest = async () => {
     return await apiRequest<DemoForecast[]>('api/v1/demoforecast/all', 'GET', null, null);
 };
@@ -50,6 +56,17 @@ export const useSearchQuery = (q: string, minTemp: number) => {
     return useQuery({
         queryKey: ['DemoForecastController', 'Search', q, minTemp],
         queryFn: () => searchRequest(q, minTemp),
+    });
+};
+
+export const advancedSearchRequest = async (filter: SearchFilter, page: number) => {
+    return await apiRequest<DemoForecast[]>('api/v1/demoforecast/advanced-search', 'GET', null, { page, ...filter });
+};
+
+export const useAdvancedSearchQuery = (filter: SearchFilter, page: number) => {
+    return useQuery({
+        queryKey: ['DemoForecastController', 'AdvancedSearch', filter, page],
+        queryFn: () => advancedSearchRequest(filter, page),
     });
 };
 

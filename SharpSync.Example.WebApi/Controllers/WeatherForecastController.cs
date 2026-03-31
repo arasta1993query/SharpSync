@@ -33,4 +33,10 @@ public class DemoForecastController : ControllerBase
     {
         return new List<DemoForecast>();
     }
+
+    [HttpGet("advanced-search")]
+    public IEnumerable<DemoForecast> AdvancedSearch([FromQuery] SearchFilter filter, int page)
+    {
+        return new List<DemoForecast>();
+    }
 }
