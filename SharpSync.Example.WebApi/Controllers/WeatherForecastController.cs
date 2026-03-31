@@ -39,4 +39,16 @@ public class DemoForecastController : ControllerBase
     {
         return new List<DemoForecast>();
     }
+
+    [HttpPost]
+    public DemoForecast Create([FromBody] CreateForecastDto dto)
+    {
+        return new DemoForecast { Summary = dto.Summary, TemperatureC = dto.TemperatureC };
+    }
+
+    [HttpPut("{id}")]
+    public DemoForecast Update(int id, [FromBody] CreateForecastDto dto)
+    {
+        return new DemoForecast { Summary = dto.Summary, TemperatureC = dto.TemperatureC };
+    }
 }

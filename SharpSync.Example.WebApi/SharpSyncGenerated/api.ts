@@ -15,6 +15,12 @@ export interface SearchFilter {
     includeHistorical: boolean;
 }
 
+export interface CreateForecastDto {
+    date: string;
+    temperatureC: number;
+    summary: string;
+}
+
 export const getRequest = async () => {
     return await apiRequest<DemoForecast[]>('api/v1/demoforecast/all', 'GET', null, null);
 };
@@ -67,6 +73,26 @@ export const useAdvancedSearchQuery = (filter: SearchFilter, page: number) => {
     return useQuery({
         queryKey: ['DemoForecastController', 'AdvancedSearch', filter, page],
         queryFn: () => advancedSearchRequest(filter, page),
+    });
+};
+
+export const createRequest = async (dto: CreateForecastDto) => {
+    return await apiRequest<DemoForecast>('api/v1/demoforecast', 'POST', dto, null);
+};
+
+export const useCreateMutation = () => {
+    return useMutation({
+        mutationFn: (dto: CreateForecastDto) => createRequest(dto),
+    });
+};
+
+export const updateRequest = async (id: number, dto: CreateForecastDto) => {
+    return await apiRequest<DemoForecast>(`api/v1/demoforecast/${id}`, 'PUT', dto, null);
+};
+
+export const useUpdateMutation = () => {
+    return useMutation({
+        mutationFn: ({ id, dto }: { id: number; dto: CreateForecastDto }) => updateRequest(id, dto),
     });
 };
 

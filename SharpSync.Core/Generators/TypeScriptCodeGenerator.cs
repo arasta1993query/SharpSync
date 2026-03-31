@@ -284,9 +284,33 @@ namespace SharpSync.Core.Generators
                 }
                 else
                 {
+                    // For mutations, if multiple arguments exist, wrap them in an object for useMutation
+                    var allArgs = tsFuncParams.Select(p => p.Split(':')[0].Trim()).ToList();
+                    string mutationSignature;
+                    string requestArgs;
+
+                    if (allArgs.Count == 0)
+                    {
+                        mutationSignature = "()";
+                        requestArgs = "";
+                    }
+                    else if (allArgs.Count == 1)
+                    {
+                        var arg = allArgs[0];
+                        var type = tsFuncParams[0].Split(':')[1].Trim();
+                        mutationSignature = $"({arg}: {type})";
+                        requestArgs = arg;
+                    }
+                    else
+                    {
+                        // Multiple arguments: wrap in object
+                        mutationSignature = "({ " + string.Join(", ", allArgs) + " }: { " + string.Join("; ", tsFuncParams) + " })";
+                        requestArgs = string.Join(", ", allArgs);
+                    }
+
                     sb.AppendLine($"export const use{method.Name}Mutation = () => {{");
                     sb.AppendLine($"    return useMutation({{");
-                    sb.AppendLine($"        mutationFn: ({funcArgs}) => {funcName}Request({callArgs}),");
+                    sb.AppendLine($"        mutationFn: {mutationSignature} => {funcName}Request({requestArgs}),");
                     sb.AppendLine($"    }});");
                     sb.AppendLine($"}};");
                 }
