@@ -20,14 +20,14 @@ export const useGetQuery = () => {
     });
 };
 
-export const getByIdRequest = async () => {
-    return await apiRequest<DemoForecast>('api/v1/demoforecast/{id}', 'GET');
+export const getByIdRequest = async (id: number) => {
+    return await apiRequest<DemoForecast>(`api/v1/demoforecast/${id}`, 'GET');
 };
 
-export const useGetByIdQuery = () => {
+export const useGetByIdQuery = (id: number) => {
     return useQuery({
-        queryKey: ['DemoForecastController', 'GetById'],
-        queryFn: () => getByIdRequest(),
+        queryKey: ['DemoForecastController', 'GetById', id],
+        queryFn: () => getByIdRequest(id),
     });
 };
 

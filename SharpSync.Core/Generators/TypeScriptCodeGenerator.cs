@@ -111,20 +111,51 @@ namespace SharpSync.Core.Generators
                     fullRoute = string.IsNullOrEmpty(sanitizedAction) ? sanitizedBase : $"{sanitizedBase}/{sanitizedAction}";
                 }
 
+                // --- Robust Parameter Mapping ---
+                var routeParams = System.Text.RegularExpressions.Regex.Matches(fullRoute, @"\{(?<param>.*?)\}")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => m.Groups["param"].Value)
+                    .ToList();
+
+                var methodParameters = method.GetParameters();
+                var tsFuncParams = new List<string>();
+                var tsCallParams = new List<string>();
+                var finalUrl = fullRoute;
+
+                foreach (var paramName in routeParams)
+                {
+                    var csharpParam = methodParameters.FirstOrDefault(p => string.Equals(p.Name, paramName, StringComparison.OrdinalIgnoreCase));
+                    string tsType = csharpParam != null ? MapCSharpToTypeScript(csharpParam.ParameterType) : "any";
+                    
+                    // Add to function parameters (id: number)
+                    tsFuncParams.Add($"{CamelCase(paramName)}: {tsType}");
+                    tsCallParams.Add(CamelCase(paramName));
+
+                    // Transform placeholder for template literal {id} -> ${id}
+                    finalUrl = finalUrl.Replace("{" + paramName + "}", "${" + CamelCase(paramName) + "}");
+                }
+
                 string returnType = MapCSharpToTypeScript(GetUnwrappedReturnType(method.ReturnType));
                 string funcName = CamelCase(method.Name);
                 
-                sb.AppendLine($"export const {funcName}Request = async () => {{");
-                sb.AppendLine($"    return await apiRequest<{returnType}>('{fullRoute}', '{httpMethod}');");
+                string funcArgs = string.Join(", ", tsFuncParams);
+                string callArgs = string.Join(", ", tsCallParams);
+                string queryKeyParams = tsCallParams.Any() ? ", " + string.Join(", ", tsCallParams) : "";
+                
+                // Use backticks if there are parameters
+                string urlQuote = routeParams.Any() ? "`" : "'";
+
+                sb.AppendLine($"export const {funcName}Request = async ({funcArgs}) => {{");
+                sb.AppendLine($"    return await apiRequest<{returnType}>({urlQuote}{finalUrl}{urlQuote}, '{httpMethod}');");
                 sb.AppendLine($"}};");
                 sb.AppendLine();
 
                 if (httpMethod == "GET")
                 {
-                    sb.AppendLine($"export const use{method.Name}Query = () => {{");
+                    sb.AppendLine($"export const use{method.Name}Query = ({funcArgs}) => {{");
                     sb.AppendLine($"    return useQuery({{");
-                    sb.AppendLine($"        queryKey: ['{controllerType.Name}', '{method.Name}'],");
-                    sb.AppendLine($"        queryFn: () => {funcName}Request(),");
+                    sb.AppendLine($"        queryKey: ['{controllerType.Name}', '{method.Name}'{queryKeyParams}],");
+                    sb.AppendLine($"        queryFn: () => {funcName}Request({callArgs}),");
                     sb.AppendLine($"    }});");
                     sb.AppendLine($"}};");
                 }
@@ -132,7 +163,7 @@ namespace SharpSync.Core.Generators
                 {
                     sb.AppendLine($"export const use{method.Name}Mutation = () => {{");
                     sb.AppendLine($"    return useMutation({{");
-                    sb.AppendLine($"        mutationFn: () => {funcName}Request(),");
+                    sb.AppendLine($"        mutationFn: ({funcArgs}) => {funcName}Request({callArgs}),");
                     sb.AppendLine($"    }});");
                     sb.AppendLine($"}};");
                 }
