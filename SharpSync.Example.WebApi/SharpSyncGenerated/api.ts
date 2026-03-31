@@ -10,13 +10,35 @@ export interface DemoForecast {
 }
 
 export const getRequest = async () => {
-    return await apiRequest<DemoForecast[]>('demoforecast', 'GET');
+    return await apiRequest<DemoForecast[]>('api/v1/demoforecast/all', 'GET');
 };
 
 export const useGetQuery = () => {
     return useQuery({
         queryKey: ['DemoForecastController', 'Get'],
         queryFn: () => getRequest(),
+    });
+};
+
+export const getByIdRequest = async () => {
+    return await apiRequest<DemoForecast>('api/v1/demoforecast/{id}', 'GET');
+};
+
+export const useGetByIdQuery = () => {
+    return useQuery({
+        queryKey: ['DemoForecastController', 'GetById'],
+        queryFn: () => getByIdRequest(),
+    });
+};
+
+export const getStatsRequest = async () => {
+    return await apiRequest<string>('global-stats', 'GET');
+};
+
+export const useGetStatsQuery = () => {
+    return useQuery({
+        queryKey: ['DemoForecastController', 'GetStats'],
+        queryFn: () => getStatsRequest(),
     });
 };
 

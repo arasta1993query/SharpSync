@@ -1,0 +1,23 @@
+# Build and Temporary folders
+bin/
+obj/
+publish/
+
+# IDE and User-specific files
+.vs/
+.idea/
+*.user
+*.userosscache
+*.sln.doccache
+
+# Project specific
+TestResults/
+nupkg/
+
+# Client-side dependencies (if any)
+wwwroot/lib/
+node_modules/
+
+# Logs and Debug
+*.log
+*.pfx

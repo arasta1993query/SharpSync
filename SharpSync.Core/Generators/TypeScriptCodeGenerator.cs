@@ -48,34 +48,69 @@ namespace SharpSync.Core.Generators
         {
             var methods = controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
             
+            string controllerName = controllerType.Name.Replace("Controller", "");
             var routeAttr = controllerType.GetCustomAttributes(true)
                 .FirstOrDefault(a => a.GetType().Name == "RouteAttribute");
                 
-            string baseRoute = "api/" + controllerType.Name.Replace("Controller", "").ToLower();
+            string baseRoute = "api/" + controllerName.ToLower();
             if (routeAttr != null)
             {
                 var templateProp = routeAttr.GetType().GetProperty("Template");
                 var tmpl = templateProp?.GetValue(routeAttr)?.ToString();
                 if (!string.IsNullOrEmpty(tmpl))
                 {
-                    baseRoute = tmpl.Replace("[controller]", controllerType.Name.Replace("Controller", "").ToLower());
+                    baseRoute = tmpl.Replace("[controller]", controllerName.ToLower());
                 }
             }
 
             foreach (var method in methods)
             {
+                // Find HttpVerb attribute (HttpGet, HttpPost, etc.)
                 var httpAttr = method.GetCustomAttributes(true)
-                    .FirstOrDefault(a => a.GetType().Name.StartsWith("Http"));
+                    .FirstOrDefault(a => a.GetType().Name.StartsWith("Http") && a.GetType().Name.EndsWith("Attribute"));
+                
+                // Find [Route] attribute on method
+                var methodRouteAttr = method.GetCustomAttributes(true)
+                    .FirstOrDefault(a => a.GetType().Name == "RouteAttribute");
                     
-                if (httpAttr == null) continue;
+                if (httpAttr == null && methodRouteAttr == null) continue;
 
-                string attrName = httpAttr.GetType().Name;
-                string httpMethod = attrName.Replace("Http", "").Replace("Attribute", "").ToUpper();
+                string httpMethod = "GET"; 
+                if (httpAttr != null)
+                {
+                    string attrName = httpAttr.GetType().Name;
+                    httpMethod = attrName.Replace("Http", "").Replace("Attribute", "").ToUpper();
+                }
 
-                var templateProp = httpAttr.GetType().GetProperty("Template");
-                string actionRoute = templateProp?.GetValue(httpAttr)?.ToString() ?? "";
+                // Resolve the action route template
+                string actionRoute = "";
+                if (httpAttr != null)
+                {
+                    var templateProp = httpAttr.GetType().GetProperty("Template");
+                    actionRoute = templateProp?.GetValue(httpAttr)?.ToString() ?? "";
+                }
+                
+                if (string.IsNullOrEmpty(actionRoute) && methodRouteAttr != null)
+                {
+                    var templateProp = methodRouteAttr.GetType().GetProperty("Template");
+                    actionRoute = templateProp?.GetValue(methodRouteAttr)?.ToString() ?? "";
+                }
 
-                string fullRoute = $"{baseRoute}/{actionRoute}".TrimEnd('/');
+                // Handle absolute vs relative routes
+                string fullRoute;
+                if (actionRoute.StartsWith("/") || actionRoute.StartsWith("~/"))
+                {
+                    // Absolute route (overrides controller route)
+                    fullRoute = actionRoute.TrimStart('~').TrimStart('/');
+                }
+                else
+                {
+                    // Relative route (appends to controller base)
+                    string sanitizedBase = baseRoute.TrimEnd('/');
+                    string sanitizedAction = actionRoute.TrimStart('/');
+                    fullRoute = string.IsNullOrEmpty(sanitizedAction) ? sanitizedBase : $"{sanitizedBase}/{sanitizedAction}";
+                }
+
                 string returnType = MapCSharpToTypeScript(GetUnwrappedReturnType(method.ReturnType));
                 string funcName = CamelCase(method.Name);
                 
