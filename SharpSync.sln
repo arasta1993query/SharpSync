@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpSync.Tool", "SharpSync
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpSync.Example.WebApi", "SharpSync.Example.WebApi\SharpSync.Example.WebApi.csproj", "{BD147202-6168-4F74-ADE3-D9ECA4C51970}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpSync.Tests.Unit", "SharpSync.Tests.Unit\SharpSync.Tests.Unit.csproj", "{0CDFF5F5-7186-4A24-A6FF-30A35E98FE74}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{BD147202-6168-4F74-ADE3-D9ECA4C51970}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD147202-6168-4F74-ADE3-D9ECA4C51970}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BD147202-6168-4F74-ADE3-D9ECA4C51970}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CDFF5F5-7186-4A24-A6FF-30A35E98FE74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CDFF5F5-7186-4A24-A6FF-30A35E98FE74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CDFF5F5-7186-4A24-A6FF-30A35E98FE74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CDFF5F5-7186-4A24-A6FF-30A35E98FE74}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

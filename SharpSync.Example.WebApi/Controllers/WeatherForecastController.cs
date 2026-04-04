@@ -41,6 +41,7 @@ public class DemoForecastController : ControllerBase
     }
 
     [HttpPost]
+    [SharpSyncForm]
     public DemoForecast Create([FromBody] CreateForecastDto dto)
     {
         return new DemoForecast { Summary = dto.Summary, TemperatureC = dto.TemperatureC };

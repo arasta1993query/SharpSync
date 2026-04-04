@@ -5,4 +5,5 @@ public class SearchFilter
     public string? Term { get; set; }
     public int? MinTemperature { get; set; }
     public bool IncludeHistorical { get; set; }
+    public List<string>? Tags { get; set; }
 }

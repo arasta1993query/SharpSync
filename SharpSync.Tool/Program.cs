@@ -21,17 +21,23 @@ namespace SharpSync.Tool
             string outputDirectory = Path.Combine(Directory.GetCurrentDirectory(), "SharpSyncGenerated");
             string clientType = "axios"; // default
 
+            bool force = false;
+
             for (int i = 1; i < args.Length; i++)
             {
-                if (args[i] == "--output" && i + 1 < args.Length)
+                if ((args[i] == "--output" || args[i] == "-o") && i + 1 < args.Length)
                 {
                     outputDirectory = args[i + 1];
                     i++;
                 }
-                else if (args[i] == "--client" && i + 1 < args.Length)
+                else if ((args[i] == "--client" || args[i] == "-c") && i + 1 < args.Length)
                 {
                     clientType = args[i + 1].ToLower();
                     i++;
+                }
+                else if (args[i] == "--force" || args[i] == "-f")
+                {
+                    force = true;
                 }
             }
 
@@ -48,29 +54,48 @@ namespace SharpSync.Tool
                 var generator = provider.GetRequiredService<ICodeGenerator>();
 
                 var types = scanner.Scan(assemblyPath);
-                string tsCode = generator.Generate(types);
+                var generatedFiles = generator.Generate(types);
 
                 if (!Directory.Exists(outputDirectory))
                 {
                     Directory.CreateDirectory(outputDirectory);
                 }
 
-                string apiPath = Path.Combine(outputDirectory, "api.ts");
-                File.WriteAllText(apiPath, tsCode);
-                Console.WriteLine($"[SharpSync] Successfully generated TypeScript into: {apiPath}");
+                foreach (var fileEntry in generatedFiles)
+                {
+                    string fullPath = Path.Combine(outputDirectory, fileEntry.Key);
+                    string directoryName = Path.GetDirectoryName(fullPath)!;
+                    
+                    if (!Directory.Exists(directoryName))
+                    {
+                        Directory.CreateDirectory(directoryName);
+                    }
+
+                    File.WriteAllText(fullPath, fileEntry.Value);
+                }
+
+                // Clean up legacy api.ts if it exists
+                string oldApiPath = Path.Combine(outputDirectory, "api.ts");
+                if (File.Exists(oldApiPath))
+                {
+                    File.Delete(oldApiPath);
+                }
+
+                Console.WriteLine($"[SharpSync] Successfully generated {generatedFiles.Count} TypeScript files into: {outputDirectory}");
 
                 string apiClientPath = Path.Combine(outputDirectory, "apiClient.ts");
-                if (!File.Exists(apiClientPath))
+                if (!File.Exists(apiClientPath) || force)
                 {
                     if (clientType == "fetch")
                     {
-                        File.WriteAllText(apiClientPath, GetFetchScaffold());
+                        File.WriteAllText(apiClientPath, Scaffolds.GetFetchScaffold());
                     }
                     else
                     {
-                        File.WriteAllText(apiClientPath, GetAxiosScaffold());
+                        File.WriteAllText(apiClientPath, Scaffolds.GetAxiosScaffold());
                     }
-                    Console.WriteLine($"[SharpSync] Scaffolding missing apiClient.ts ({clientType}) at: {apiClientPath}");
+                    string action = force && File.Exists(apiClientPath) ? "Overwriting" : "Scaffolding";
+                    Console.WriteLine($"[SharpSync] {action} apiClient.ts ({clientType}) at: {apiClientPath}");
                 }
                 else
                 {
@@ -82,103 +107,6 @@ namespace SharpSync.Tool
                 Console.WriteLine($"[SharpSync] Error: {ex.Message}");
                 Environment.ExitCode = 1;
             }
-        }
-
-        private static string GetAxiosScaffold()
-        {
-            return @"import axios, { AxiosRequestConfig } from 'axios';
-
-// Create a globally configurable axios instance (add auth headers or interceptors here)
-const axiosInstance = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || '',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-export const apiRequest = async <T>(
-    url: string,
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
-    body?: any,
-    params?: any,
-    options?: AxiosRequestConfig
-): Promise<T> => {
-    if (body && !(body instanceof FormData)) {
-        options = {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...(options?.headers || {}),
-            },
-        };
-    }
-
-    const response = await axiosInstance.request<T>({
-        url,
-        method,
-        data: body,
-        params,
-        ...options,
-    });
-    return response.data;
-};
-";
-        }
-
-        private static string GetFetchScaffold()
-        {
-            return @"// Generic fetch wrapper for React Query
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
-export const apiRequest = async <T>(
-    url: string,
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
-    body?: any,
-    params?: any,
-    options?: RequestInit
-): Promise<T> => {
-    let finalUrl = `${BASE_URL.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
-    
-    if (params) {
-        const query = new URLSearchParams();
-        Object.keys(params).forEach(key => {
-            if (params[key] !== undefined && params[key] !== null) {
-                query.append(key, params[key].toString());
-            }
-        });
-        const queryString = query.toString();
-        if (queryString) {
-            finalUrl += (finalUrl.includes('?') ? '&' : '?') + queryString;
-        }
-    }
-
-    const requestHeaders: any = {
-        ...(options?.headers || {}),
-    };
-
-    if (body && !(body instanceof FormData)) {
-        requestHeaders['Content-Type'] = 'application/json';
-    }
-
-    const response = await fetch(finalUrl, {
-        method,
-        headers: requestHeaders,
-        body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
-        ...options,
-    });
-
-    if (!response.ok) {
-        throw new Error(`API Request failed: ${response.statusText}`);
-    }
-
-    try {
-        const text = await response.text();
-        return text ? JSON.parse(text) : ({} as T);
-    } catch {
-        return {} as T;
-    }
-};
-";
         }
     }
 }

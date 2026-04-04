@@ -13,7 +13,7 @@ namespace SharpSync.Core.Plugins
         /// Generates the output source code for the given types.
         /// </summary>
         /// <param name="types">The C# types discovered by the scanner.</param>
-        /// <returns>A string containing the generated output (e.g. TypeScript code).</returns>
-        string Generate(IEnumerable<Type> types);
+        /// <returns>A dictionary containing relative file paths and their generated content.</returns>
+        IDictionary<string, string> Generate(IEnumerable<Type> types);
     }
 }
