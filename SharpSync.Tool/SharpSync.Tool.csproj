@@ -15,7 +15,7 @@
     <Nullable>enable</Nullable>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>sharpsync</ToolCommandName>
-    <Version>0.1.0-beta.3</Version>
+    <Version>0.1.0</Version>
     <Authors>Alireza</Authors>
     <Description>CLI Engine for SharpSync.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
