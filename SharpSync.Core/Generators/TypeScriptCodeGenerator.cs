@@ -13,15 +13,17 @@ namespace SharpSync.Core.Generators
         private readonly DependencyResolver _dependencyResolver;
         private readonly ModelGenerator _modelGenerator;
         private readonly HookGenerator _hookGenerator;
+        private readonly HubGenerator _hubGenerator;
 
         public TypeScriptCodeGenerator()
         {
             _dependencyResolver = new DependencyResolver(_zodEnabledTypes);
             _modelGenerator = new ModelGenerator(_zodEnabledTypes);
             _hookGenerator = new HookGenerator(_zodEnabledTypes);
+            _hubGenerator = new HubGenerator(_zodEnabledTypes);
         }
 
-        public IDictionary<string, string> Generate(IEnumerable<Type> types)
+        public IDictionary<string, string> Generate(IEnumerable<Type> types, FrameworkType framework = FrameworkType.React)
         {
             var discoveredTypes = _dependencyResolver.CollectTypesRecursive(types);
             var result = new Dictionary<string, string>();
@@ -46,19 +48,32 @@ namespace SharpSync.Core.Generators
             }
 
             // 2. Generate Model Files
-            var models = discoveredTypes.Where(t => !t.Name.EndsWith("Controller")).ToList();
-            foreach (var model in models)
+            var models = discoveredTypes.Where(t => !t.Name.EndsWith("Controller") && !t.IsGenericTypeDefinition).ToList();
+            // Also include generic definitions that were collected
+            var genericDefs = discoveredTypes.Where(t => t.IsGenericTypeDefinition).ToList();
+            
+            foreach (var model in models.Concat(genericDefs))
             {
                 var content = _modelGenerator.GenerateModelFile(model, _dependencyResolver);
-                result.Add($"models/{model.Name}.ts", content);
+                var fileName = model.IsGenericTypeDefinition ? model.Name.Split('`')[0] : model.Name;
+                result.Add($"models/{fileName}.ts", content);
             }
 
             // 3. Generate Controller Files
             foreach (var controller in controllers)
             {
-                var content = _hookGenerator.GenerateHookFile(controller, _dependencyResolver);
+                var content = _hookGenerator.GenerateHookFile(controller, _dependencyResolver, framework);
                 string fileName = controller.Name.Replace("Controller", "") + "Hooks.ts";
                 result.Add($"hooks/{fileName}", content);
+            }
+
+            // 4. Generate Hub Files
+            var hubs = discoveredTypes.Where(t => t.GetCustomAttributes(true).Any(a => a.GetType().Name == "SharpSyncHubAttribute")).ToList();
+            foreach (var hub in hubs)
+            {
+                var content = _hubGenerator.GenerateHubFile(hub, _dependencyResolver, framework);
+                string fileName = hub.Name.Replace("Hub", "") + "Hub.ts";
+                result.Add($"hubs/{fileName}", content);
             }
 
             return result;

@@ -51,8 +51,30 @@ namespace SharpSync.Core.Generators
             else
             {
                 var metadata = new List<string>();
-                sb.AppendLine($"export interface {type.Name} {{");
-                foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                var typeName = type.IsGenericType ? type.Name.Split('`')[0] : type.Name;
+                var genericParams = "";
+                if (type.IsGenericTypeDefinition)
+                {
+                    genericParams = "<" + string.Join(", ", type.GetGenericArguments().Select(a => a.Name)) + ">";
+                }
+
+                var extendsClause = "";
+                if (type.BaseType != null && !TypeMapper.IsSystemType(type.BaseType))
+                {
+                    var baseTypeName = type.BaseType.IsGenericType ? type.BaseType.Name.Split('`')[0] : type.BaseType.Name;
+                    if (type.BaseType.IsGenericType)
+                    {
+                         var args = string.Join(", ", type.BaseType.GetGenericArguments().Select(TypeMapper.MapCSharpToTypeScript));
+                         baseTypeName += $"<{args}>";
+                    }
+                    extendsClause = $" extends {baseTypeName}";
+                }
+
+                sb.AppendLine($"export interface {typeName}{genericParams}{extendsClause} {{");
+                
+                // Use DeclaredOnly to avoid duplicating properties from base class
+                var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                foreach (var prop in props)
                 {
                     var tsType = TypeMapper.MapCSharpToTypeScript(prop.PropertyType);
                     sb.AppendLine($"    {TypeMapper.CamelCase(prop.Name)}: {tsType};");
@@ -82,8 +104,14 @@ namespace SharpSync.Core.Generators
 
         private void GenerateZodSchema(StringBuilder sb, Type type)
         {
+            if (type.IsGenericTypeDefinition) return; // Cannot generate simple schema for open generic
+
             sb.AppendLine();
             sb.AppendLine($"export const {type.Name}Schema = z.object({{");
+            
+            // For Zod, we might want all properties including inherited ones if we don't have a better way to compose schemas
+            // But if we use 'extends' in TS, maybe we should use .extend() in Zod?
+            // For now, let's keep it simple and include all properties for the schema.
             foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 var zodBase = TypeMapper.MapCSharpToZod(prop.PropertyType, _zodEnabledTypes);

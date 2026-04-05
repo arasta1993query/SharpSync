@@ -19,29 +19,47 @@ namespace SharpSync.Core.Generators
 
             if (type.IsEnum) return type.Name;
 
-            if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IEnumerable<>) || 
-                                       type.GetGenericTypeDefinition() == typeof(List<>) ||
-                                       type.GetGenericTypeDefinition() == typeof(ICollection<>) ||
-                                       type.GetGenericTypeDefinition() == typeof(IList<>)))
+            Type? underlying = Nullable.GetUnderlyingType(type);
+            if (underlying != null)
             {
-                return MapCSharpToTypeScript(type.GetGenericArguments()[0]) + "[]";
+                return MapCSharpToTypeScript(underlying) + " | null";
+            }
+
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+                if (genericDef == typeof(IEnumerable<>) || 
+                    genericDef == typeof(List<>) ||
+                    genericDef == typeof(ICollection<>) ||
+                    genericDef == typeof(IList<>))
+                {
+                    return MapCSharpToTypeScript(type.GetGenericArguments()[0]) + "[]";
+                }
+
+                if (genericDef == typeof(IDictionary<,>) || 
+                    genericDef == typeof(Dictionary<,>) ||
+                    genericDef == typeof(IReadOnlyDictionary<,>))
+                {
+                    var keyType = MapCSharpToTypeScript(type.GetGenericArguments()[0]);
+                    var valueType = MapCSharpToTypeScript(type.GetGenericArguments()[1]);
+                    return $"Record<{keyType}, {valueType}>";
+                }
+
+                // Handle Task<T>, ValueTask<T> or ActionResult<T>
+                if (type.Name.StartsWith("Task") || type.Name.StartsWith("ValueTask") || type.Name.StartsWith("ActionResult"))
+                {
+                    return MapCSharpToTypeScript(type.GetGenericArguments()[0]);
+                }
+
+                // General generic type: Name<T1, T2>
+                var baseName = type.Name.Split('`')[0];
+                var args = string.Join(", ", type.GetGenericArguments().Select(MapCSharpToTypeScript));
+                return $"{baseName}<{args}>";
             }
 
             if (type.IsArray)
             {
                 return MapCSharpToTypeScript(type.GetElementType()!) + "[]";
-            }
-
-            // Handle Task<T> or ActionResult<T>
-            if (type.IsGenericType && (type.Name.StartsWith("Task") || type.Name.StartsWith("ActionResult")))
-            {
-                return MapCSharpToTypeScript(type.GetGenericArguments()[0]);
-            }
-
-            Type? underlying = Nullable.GetUnderlyingType(type);
-            if (underlying != null)
-            {
-                return MapCSharpToTypeScript(underlying) + " | null";
             }
 
             return type.Name == "Object" ? "any" : type.Name;
@@ -58,12 +76,23 @@ namespace SharpSync.Core.Generators
 
             if (type.IsEnum) return $"z.nativeEnum({type.Name})";
 
-            if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IEnumerable<>) || 
-                                       type.GetGenericTypeDefinition() == typeof(List<>) ||
-                                       type.GetGenericTypeDefinition() == typeof(ICollection<>) ||
-                                       type.GetGenericTypeDefinition() == typeof(IList<>)))
+            if (type.IsGenericType)
             {
-                return $"z.array({MapCSharpToZod(type.GetGenericArguments()[0], zodEnabledTypes)})";
+                var genericDef = type.GetGenericTypeDefinition();
+                if (genericDef == typeof(IEnumerable<>) || 
+                    genericDef == typeof(List<>) ||
+                    genericDef == typeof(ICollection<>) ||
+                    genericDef == typeof(IList<>))
+                {
+                    return $"z.array({MapCSharpToZod(type.GetGenericArguments()[0], zodEnabledTypes)})";
+                }
+
+                if (genericDef == typeof(IDictionary<,>) || 
+                    genericDef == typeof(Dictionary<,>) ||
+                    genericDef == typeof(IReadOnlyDictionary<,>))
+                {
+                    return $"z.record(z.string(), {MapCSharpToZod(type.GetGenericArguments()[1], zodEnabledTypes)})";
+                }
             }
 
             if (type.IsArray)

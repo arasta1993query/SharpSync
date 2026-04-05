@@ -21,7 +21,8 @@ namespace SharpSync.Core.Services
                 var assembly = Assembly.LoadFrom(assemblyPath);
 
                 var types = GetLoadableTypes(assembly)
-                    .Where(t => t.GetCustomAttribute<SharpSyncAttribute>() != null)
+                    .Where(t => t.GetCustomAttribute<SharpSyncAttribute>() != null || 
+                                t.GetCustomAttributes(true).Any(a => a.GetType().Name == "SharpSyncHubAttribute"))
                     .ToList();
 
                 return types;

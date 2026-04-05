@@ -13,13 +13,16 @@ namespace SharpSync.Tool
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage: dotnet sharpsync <AssemblyPath> [--output <OutputDirectory>] [--client <axios|fetch>]");
+                Console.WriteLine("Usage: dotnet sharpsync <AssemblyPath> [--output <OutputDirectory>] [--client <axios|fetch>] [--framework <react|vue|svelte>]");
                 return;
             }
 
             string assemblyPath = args[0];
             string outputDirectory = Path.Combine(Directory.GetCurrentDirectory(), "SharpSyncGenerated");
             string clientType = "axios"; // default
+
+            string frameworkStr = "react";
+            FrameworkType framework = FrameworkType.React;
 
             bool force = false;
 
@@ -33,6 +36,15 @@ namespace SharpSync.Tool
                 else if ((args[i] == "--client" || args[i] == "-c") && i + 1 < args.Length)
                 {
                     clientType = args[i + 1].ToLower();
+                    i++;
+                }
+                else if ((args[i] == "--framework" || args[i] == "-fw") && i + 1 < args.Length)
+                {
+                    frameworkStr = args[i + 1].ToLower();
+                    if (Enum.TryParse<FrameworkType>(frameworkStr, true, out var fw))
+                    {
+                        framework = fw;
+                    }
                     i++;
                 }
                 else if (args[i] == "--force" || args[i] == "-f")
@@ -54,7 +66,7 @@ namespace SharpSync.Tool
                 var generator = provider.GetRequiredService<ICodeGenerator>();
 
                 var types = scanner.Scan(assemblyPath);
-                var generatedFiles = generator.Generate(types);
+                var generatedFiles = generator.Generate(types, framework);
 
                 if (!Directory.Exists(outputDirectory))
                 {
@@ -81,7 +93,10 @@ namespace SharpSync.Tool
                     File.Delete(oldApiPath);
                 }
 
-                Console.WriteLine($"[SharpSync] Successfully generated {generatedFiles.Count} TypeScript files into: {outputDirectory}");
+                if (generatedFiles.Keys.Any(k => k.StartsWith("hubs/")))
+                {
+                    Console.WriteLine("[SharpSync] 📡 SignalR Hubs detected. Ensure you have installed '@microsoft/signalr' in your frontend project.");
+                }
 
                 string apiClientPath = Path.Combine(outputDirectory, "apiClient.ts");
                 if (!File.Exists(apiClientPath) || force)

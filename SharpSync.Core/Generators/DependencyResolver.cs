@@ -40,9 +40,36 @@ namespace SharpSync.Core.Generators
                         }
                     }
                 }
+                else if (type.GetCustomAttributes(true).Any(a => a.GetType().Name == "SharpSyncHubAttribute"))
+                {
+                    // Handle Hub Server Methods
+                    var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                    foreach (var m in methods)
+                    {
+                        var retType = GetUnwrappedReturnType(m.ReturnType);
+                        EnqueueType(queue, retType, discovered);
+                        foreach (var p in m.GetParameters())
+                        {
+                            EnqueueType(queue, p.ParameterType, discovered);
+                        }
+                    }
+
+                    // Handle Hub Client Interface (Hub<T>)
+                    var clientType = GetHubClientType(type);
+                    if (clientType != null)
+                    {
+                        EnqueueType(queue, clientType, discovered);
+                    }
+                }
                 else
                 {
-                    foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                    // Handle Inheritance
+                    if (type.BaseType != null && !TypeMapper.IsSystemType(type.BaseType))
+                    {
+                        EnqueueType(queue, type.BaseType, discovered);
+                    }
+
+                    foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
                     {
                         EnqueueType(queue, prop.PropertyType, discovered);
                     }
@@ -73,9 +100,13 @@ namespace SharpSync.Core.Generators
         public HashSet<Type> GetTypeDependencies(Type type)
         {
             var deps = new HashSet<Type>();
-            if (type.IsEnum) return deps;
+            var baseType = type.BaseType;
+            if (baseType != null && !TypeMapper.IsSystemType(baseType))
+            {
+                deps.Add(baseType);
+            }
 
-            foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 var propType = TypeMapper.GetBaseType(prop.PropertyType);
                 if (propType != null && !TypeMapper.IsSystemType(propType) && propType != type)
@@ -103,6 +134,35 @@ namespace SharpSync.Core.Generators
             return deps;
         }
 
+        public HashSet<Type> GetHubDependencies(Type hubType)
+        {
+            var deps = GetControllerDependencies(hubType); // Hub server methods look like controller methods
+            var clientType = GetHubClientType(hubType);
+            if (clientType != null)
+            {
+                var baseClientType = TypeMapper.GetBaseType(clientType);
+                if (baseClientType != null && !TypeMapper.IsSystemType(baseClientType))
+                {
+                    deps.Add(baseClientType);
+                }
+            }
+            return deps;
+        }
+
+        public Type? GetHubClientType(Type hubType)
+        {
+            var current = hubType;
+            while (current != null && current != typeof(object))
+            {
+                if (current.IsGenericType && current.Name.StartsWith("Hub`1"))
+                {
+                    return current.GetGenericArguments()[0];
+                }
+                current = current.BaseType;
+            }
+            return null;
+        }
+
         public Type GetUnwrappedReturnType(Type returnType)
         {
             if (returnType.IsGenericType && (returnType.Name.StartsWith("Task") || returnType.Name.StartsWith("ValueTask")))
@@ -120,8 +180,15 @@ namespace SharpSync.Core.Generators
         {
             if (type.IsGenericType)
             {
+                var genericDef = type.GetGenericTypeDefinition();
+                if (!TypeMapper.IsSystemType(genericDef) && !discovered.Contains(genericDef))
+                {
+                    queue.Enqueue(genericDef);
+                }
+
                 foreach (var arg in type.GetGenericArguments())
                     EnqueueType(queue, arg, discovered);
+                
                 return;
             }
 

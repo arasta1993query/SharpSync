@@ -8,10 +8,12 @@ Stop manually writing frontend API clients. Focus on your C# logic, and let Shar
 
 ## 🚀 Key Features
 
-- **🎯 TanStack Query Ready**: Generates fully typed `useQuery` and `useMutation` hooks out-of-the-box.
-- **🛡️ Selective Zod Validation**: Automatically translates C# Data Annotations (`[Required]`, `[Range]`, `[StringLength]`, etc.) into Zod schemas for form-based endpoints.
-- **📦 Modular Architecture**: Generates a clean, multi-file structure with automated dependency tracking and relative imports.
-- **📎 Smart FormData Support**: Intelligent handling of `[FromForm]` attributes and file uploads with automatic serialization.
+- **🎯 Multi-Framework Ready**: Generates fully typed hooks for **React Query**, **Vue Query**, and **Svelte Query**.
+- **🛡️ Selective Zod Validation**: Automatically translates C# Data Annotations into Zod schemas.
+- **🏗️ Advanced Type Handling**: Native support for **Generics**, **Dictionaries**, and **Inheritance**.
+- **📡 SignalR Synchronization**: High-fidelity, strongly-typed SignalR clients for Hubs and Client interfaces.
+- **📦 Modular Architecture**: Generates a clean, multi-file structure with automated dependency tracking.
+- **📎 Smart FormData Support**: Intelligent handling of `[FromForm]` attributes and file uploads.
 - **🔌 Client Agnostic**: Built-in scaffolds for both **Axios** and **Fetch API**.
 - **🔍 RFC 7807 Error Handling**: Robust, standardized error handling for consistent frontend feedback.
 
@@ -67,7 +69,8 @@ public class CreateForecastDto
 Point the tool to your compiled assembly:
 
 ```bash
-sharpsync "path/to/YourProject.dll" --output "./frontend/src/api" --client axios
+# Generate Vue Query hooks using Fetch
+sharpsync "path/to/YourProject.dll" --output "./src/api" --framework vue --client fetch
 ```
 
 ### 3. Use in React/Next.js
@@ -111,6 +114,7 @@ SharpSyncGenerated/
 | --- | --- | --- | --- |
 | `--output` | `-o` | Target directory for generated files | `./SharpSyncGenerated` |
 | `--client` | `-c` | HTTP client to scaffold (`axios` \| `fetch`) | `axios` |
+| `--framework`| `-fw` | Frontend framework (`react` \| `vue` \| `svelte`) | `react` |
 | `--force` | `-f` | Overwrite existing `apiClient.ts` | `false` |
 | `--help` | `-h` | Show help information | - |
 
@@ -126,6 +130,62 @@ SharpSync automatically translates the following to Zod rules:
 - `[EmailAddress]` -> `.email()`
 - `[Url]` -> `.url()`
 - `[RegularExpression]` -> `.regex()`
+
+---
+
+## 🏗️ Advanced Type Mapping
+
+SharpSync handles complex C# types with ease:
+
+- **Inheritance**: `public class Child : Parent` becomes `interface Child extends Parent`.
+- **Generics**: `public class Result<T>` becomes `interface Result<T>`.
+- **Dictionaries**: `Dictionary<string, int>` becomes `Record<string, number>`.
+- **Enums**: C# Enums are translated to TypeScript string Enums.
+
+---
+
+## 📡 SignalR Hubs
+
+SharpSync can generate strongly-typed clients for your SignalR Hubs. 
+
+### 1. Define your Hub and Client Interface
+```csharp
+public interface IChatClient {
+    Task ReceiveMessage(string user, string message);
+}
+
+[SharpSyncHub]
+public class ChatHub : Hub<IChatClient> {
+    public async Task SendMessage(string user, string message) {
+        await Clients.All.ReceiveMessage(user, message);
+    }
+}
+```
+
+### 2. Use the Generated Hook (React Example)
+```typescript
+import { useChatHub } from './hubs/ChatHub';
+
+export function ChatComponent() {
+    const hub = useChatHub('/chatHub');
+
+    useEffect(() => {
+        if (!hub) return;
+
+        // Strongly-typed listener
+        const unsubscribe = hub.onReceiveMessage((user, message) => {
+            console.log(`${user}: ${message}`);
+        });
+
+        return unsubscribe;
+    }, [hub]);
+
+    const handleSend = () => {
+        // Strongly-typed invoker
+        hub?.sendMessage('Me', 'Hello World!');
+    };
+}
+```
 
 ---
 

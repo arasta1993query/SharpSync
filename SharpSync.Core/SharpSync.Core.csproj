@@ -8,7 +8,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Alireza</Authors>
     <Description>High-performance generator syncing C# Controllers and DTOs with TypeScript Interfaces and TanStack Query Hooks.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
