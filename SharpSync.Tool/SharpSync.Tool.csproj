@@ -15,14 +15,16 @@
     <Nullable>enable</Nullable>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>sharpsync</ToolCommandName>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>Alireza</Authors>
     <Description>CLI Engine for SharpSync.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
